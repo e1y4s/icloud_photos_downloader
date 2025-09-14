@@ -686,6 +686,11 @@ def download_builder(
                     download_path = (f"-{photo_size}.").join(download_path.rsplit(".", 1))
                     logger.debug("%s deduplicated", truncate_middle(download_path, 96))
                     file_exists = os.path.isfile(download_path)
+            elif file_match_policy == FileMatchPolicy.NAME_ID7_VERSIONED_DATE_DEDUP:
+                timestamp = int(time.mktime(created_date.timetuple()))
+                base, ext = os.path.splitext(download_path)
+                download_path = f"{base}-{timestamp}{ext}"
+                file_exists = os.path.isfile(download_path)
             if file_exists:
                 counter.increment()
                 logger.debug("%s already exists", truncate_middle(download_path, 96))
@@ -780,6 +785,15 @@ def download_builder(
                         logger.debug("%s deduplicated", truncate_middle(lp_download_path, 96))
                         # Print the deduplicated filename but don't download
                         print(lp_download_path)
+                if (
+                    lp_file_exists
+                    and file_match_policy == FileMatchPolicy.NAME_ID7_VERSIONED_DATE_DEDUP
+                ):
+                    timestamp = int(time.mktime(created_date.timetuple()))
+                    base, ext = os.path.splitext(lp_download_path)
+                    lp_download_path = f"{base}-{timestamp}{ext}"
+                    logger.debug("%s deduplicated", truncate_middle(lp_download_path, 96))
+                    print(lp_download_path)
             else:
                 if lp_file_exists:
                     if file_match_policy == FileMatchPolicy.NAME_SIZE_DEDUP_WITH_SUFFIX:
@@ -791,6 +805,11 @@ def download_builder(
                             )
                             logger.debug("%s deduplicated", truncate_middle(lp_download_path, 96))
                             lp_file_exists = os.path.isfile(lp_download_path)
+                    elif file_match_policy == FileMatchPolicy.NAME_ID7_VERSIONED_DATE_DEDUP:
+                        timestamp = int(time.mktime(created_date.timetuple()))
+                        base, ext = os.path.splitext(lp_download_path)
+                        lp_download_path = f"{base}-{timestamp}{ext}"
+                        lp_file_exists = os.path.isfile(lp_download_path)
                     if lp_file_exists:
                         logger.debug("%s already exists", truncate_middle(lp_download_path, 96))
                 if not lp_file_exists:
