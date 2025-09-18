@@ -677,6 +677,24 @@ def download_builder(
             original_download_path = add_suffix_to_filename("-original", download_path)
             file_exists = os.path.isfile(original_download_path)
 
+        if file_match_policy == FileMatchPolicy.NAME_ID7_VERSIONED:
+            base_noext, ext = os.path.splitext(download_path)
+            epoch = int(time.mktime(created_date.timetuple()))
+            current_variant = f"{base_noext}-{epoch}{ext}"
+            if not file_exists:
+                if os.path.isfile(current_variant):
+                    download_path = current_variant
+                    file_exists = True
+            else:
+                stat = os.stat(download_path)
+                local_date = datetime.datetime.fromtimestamp(stat.st_mtime, get_localzone())
+                if local_date.replace(microsecond=0) != created_date.replace(microsecond=0):
+                    logger.debug(
+                        "%s already exists but date is different (local=%s, remote=%s)",
+                        truncate_middle(download_path, 96), local_date, created_date
+                    )
+                    download_path = current_variant
+                    file_exists = os.path.isfile(download_path)
         if file_exists:
             if file_match_policy == FileMatchPolicy.NAME_SIZE_DEDUP_WITH_SUFFIX:
                 # for later: this crashes if download-size medium is specified
@@ -763,6 +781,26 @@ def download_builder(
 
             lp_file_exists = os.path.isfile(lp_download_path)
 
+            if file_match_policy == FileMatchPolicy.NAME_ID7_VERSIONED:
+                base_noext, ext = os.path.splitext(lp_download_path)
+                epoch = int(time.mktime(created_date.timetuple()))
+                current_variant = f"{base_noext}-{epoch}{ext}"
+
+                if not lp_file_exists:
+                    if os.path.isfile(current_variant):
+                        lp_download_path = current_variant
+                        lp_file_exists = True
+                        logger.debug("%s already exists (epoch variant)", truncate_middle(lp_download_path, 96))
+                else:
+                    stat = os.stat(lp_download_path)
+                    local_date = datetime.datetime.fromtimestamp(stat.st_mtime, get_localzone())
+                    if local_date.replace(microsecond=0) != created_date.replace(microsecond=0):
+                        logger.debug(
+                            "%s already exists but date is different (local=%s, remote=%s)",
+                            truncate_middle(lp_download_path, 96), local_date, created_date
+                        )
+                        lp_download_path = current_variant
+                        lp_file_exists = os.path.isfile(lp_download_path)
             if only_print_filenames:
                 if not lp_file_exists:
                     print(lp_download_path)
