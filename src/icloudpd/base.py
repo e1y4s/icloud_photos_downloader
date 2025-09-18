@@ -32,6 +32,11 @@ from requests.exceptions import (
     ContentDecodingError,
     StreamConsumedError,
     UnrewindableBodyError,
+    HTTPError,
+    Timeout,
+    ReadTimeout,
+    ConnectTimeout,
+    ConnectionError,
 )
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
@@ -1280,11 +1285,25 @@ def core_single_run(
                 pass
             # In single run mode, return error after webui retry attempts
             return 1
+        except HTTPError as error:
+            code = error.response.status_code if error.response is not None else None
+            if code in (429, 500, 502, 503, 504):
+                logger.debug(error)
+                logger.debug("Retrying...")
+                # these errors we can safely retry
+                continue
+            # non-retryable (ex: 400/401/403/404/409...)
+            dump_responses(logger.debug, captured_responses)
+            return 1
         except (
             ChunkedEncodingError,
             ContentDecodingError,
             StreamConsumedError,
             UnrewindableBodyError,
+            Timeout,
+            ReadTimeout,
+            ConnectTimeout,
+            ConnectionError,
         ) as error:
             logger.debug(error)
             logger.debug("Retrying...")
