@@ -937,6 +937,9 @@ def core_single_run(
         or global_config.no_progress_bar
         or not sys.stdout.isatty()
     )
+
+    icloud: PyiCloudService | None = None
+
     while True:  # retry loop (not watch - only for immediate retries)
         captured_responses: List[Mapping[str, Any]] = []
 
@@ -944,21 +947,22 @@ def core_single_run(
             captured.append(response)
 
         try:
-            icloud = authenticator(
-                logger,
-                global_config.domain,
-                {
-                    provider.value: functions
-                    for provider, functions in password_providers_dict.items()
-                },
-                global_config.mfa_provider,
-                status_exchange,
-                user_config.username,
-                notificator,
-                partial(append_response, captured_responses),
-                user_config.cookie_directory,
-                os.environ.get("CLIENT_ID"),
-            )
+            if not icloud:
+                icloud = authenticator(
+                    logger,
+                    global_config.domain,
+                    {
+                        provider.value: functions
+                        for provider, functions in password_providers_dict.items()
+                    },
+                    global_config.mfa_provider,
+                    status_exchange,
+                    user_config.username,
+                    notificator,
+                    partial(append_response, captured_responses),
+                    user_config.cookie_directory,
+                    os.environ.get("CLIENT_ID"),
+                )
 
             # dump captured responses for debugging
             # dump_responses(logger.debug, captured_responses)
@@ -1236,6 +1240,7 @@ def core_single_run(
             dump_responses(logger.debug, captured_responses)
             if PasswordProvider.WEBUI in global_config.password_providers:
                 update_auth_error_in_webui(status_exchange, str(error))
+                icloud = None
                 continue
             else:
                 return 1
@@ -1244,6 +1249,7 @@ def core_single_run(
             dump_responses(logger.debug, captured_responses)
             if global_config.mfa_provider == MFAProvider.WEBUI:
                 update_auth_error_in_webui(status_exchange, str(error))
+                icloud = None
                 continue
             else:
                 return 1
@@ -1257,6 +1263,7 @@ def core_single_run(
             if isinstance(error, PyiCloudAPIResponseException) and "Invalid global session" in str(
                 error
             ):
+                icloud = None
                 continue
             dump_responses(logger.debug, captured_responses)
             # webui will display error and wait for password again
