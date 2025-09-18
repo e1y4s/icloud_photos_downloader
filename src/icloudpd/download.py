@@ -136,19 +136,16 @@ def download_media(
         return download_local(
             photo_response, temp_download_path, append_mode, download_path, photo.created
         )
-    else:
-        # Use the standard original filename generator for error logging
-        from icloudpd.base import lp_filename_original as simple_lp_filename_generator
 
-        # Get the proper filename using filename_builder
-        base_filename = filename_builder(photo)
-        version_filename = calculate_version_filename(
-            base_filename, version, size, simple_lp_filename_generator, photo.item_type
-        )
-        logger.error(
-            "Could not find URL to download %s for size %s",
-            version_filename,
-            size.value,
-        )
-
-        return False
+    from icloudpd.base import lp_filename_original as simple_lp_filename_generator, calculate_version_filename
+    base_filename = filename_builder(photo)
+    version_filename = calculate_version_filename(
+        base_filename, version, size, simple_lp_filename_generator, photo.item_type
+    )
+    logger.debug(
+        "Could not find URL to download %s for size %s",
+        version_filename,
+        size.value,
+    )
+    photo_response.raise_for_status()
+    return False
